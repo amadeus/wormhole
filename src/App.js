@@ -1,8 +1,8 @@
 import React, {Component} from 'react';
 import Dispatcher from './Dispatcher';
 import {ActionTypes} from './Constants';
-import CounterStore from './CounterStore';
-import Counter from './Counter';
+import CounterStore from './stores/CounterStore';
+import Counter from './components/Counter';
 import connectStores from './lib/connectStore';
 
 const ConnectedCounter = connectStores([CounterStore], () => ({count: CounterStore.count}), Counter);

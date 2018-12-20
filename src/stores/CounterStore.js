@@ -1,6 +1,6 @@
-import Store from './lib/Store';
-import Dispatcher from './Dispatcher';
-import {ActionTypes} from './Constants';
+import Store from '../lib/Store';
+import Dispatcher from '../Dispatcher';
+import {ActionTypes} from '../Constants';
 
 let count = 0;
 
