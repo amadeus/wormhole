@@ -5,8 +5,10 @@ import {ActionTypes} from '../Constants';
 let sharedElements = {};
 let owners = {};
 
-function createElement() {
-  return document.createElement('div');
+function createElement(id) {
+  const element = document.createElement('div');
+  element.id = id;
+  return element;
 }
 
 function handleDestroy({id}) {
@@ -27,13 +29,25 @@ class SharedDOMElementStore extends Store {
   getFreeElement(id, ownerId) {
     let element = sharedElements[id];
     if (element == null) {
-      sharedElements[id] = element = createElement();
+      sharedElements[id] = element = createElement(id);
       owners[id] = ownerId;
       return element;
     } else if (owners[id] == null || owners[id] === ownerId) {
       return element;
     }
     return null;
+  }
+
+  getOwnedNode(ownerId) {
+    let ownedItem = null;
+    Object.keys(owners).find(id => {
+      if (owners[id] === ownerId) {
+        ownedItem = id;
+        return true;
+      }
+      return false;
+    });
+    return sharedElements[ownedItem];
   }
 
   getElement(id) {

@@ -5,7 +5,7 @@ export default function connectStores(stores, getState, ChildComponent) {
     constructor(props) {
       super(props);
       stores.forEach(store => store.addChangeListener(this.handleStoreChanges));
-      this.state = getState();
+      this.state = getState(props);
     }
 
     componentWillUnmount() {
@@ -13,7 +13,7 @@ export default function connectStores(stores, getState, ChildComponent) {
     }
 
     handleStoreChanges = () => {
-      this.setState(() => getState());
+      this.setState(() => getState(this.props));
     };
 
     render() {
