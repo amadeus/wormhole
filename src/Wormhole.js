@@ -35,7 +35,7 @@ type WormholeState = {|
 
   __registerTarget: (TargetID, TargetNode) => void,
   __deleteTarget: TargetID => void,
-  __registerItem: (ItemID, RenderFunction, ItemNode, TargetNode) => void,
+  __registerItem: (ItemID, RenderFunction, ItemNode, ?string) => void,
   __deleteItem: ItemID => void,
 |};
 
@@ -71,15 +71,13 @@ class ItemCore extends React.Component<ItemCoreProps> {
       ref: {current},
     } = this;
     if (current != null) {
-      const renderNode = document.createElement('div');
-      renderNode.className = renderNodeClassName || '';
-      __context.__registerItem(id, children, renderNode, current);
+      __context.__registerItem(id, children, current, renderNodeClassName);
     }
   }
 
   componentWillUnmount() {
     const {__context, id} = this.props;
-    __context.__deleteTarget(id);
+    __context.__deleteItem(id);
   }
 
   renderPlaceholder() {
@@ -203,28 +201,37 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
     });
   };
 
-  registerItem = (id: ItemID, render: RenderFunction, renderNode: ItemNode, targetNode: TargetNode) => {
+  registerItem = (id: ItemID, render: RenderFunction, targetNode: TargetNode, renderNodeClassName?: ?string) => {
+    let renderNode;
     this.setState(
       ({items, targets}) => {
-        const newItems = {...items, [id]: {id, targetID: id, render, renderNode}};
+        const _item = items[id];
+        let newItems = items;
+        if (_item == null) {
+          renderNode = document.createElement('div');
+          renderNode.className = renderNodeClassName || '';
+          newItems = {...items, [id]: {id, targetID: id, render, renderNode}};
+        }
         const newTargets = {...targets, [id]: targetNode};
         return {items: newItems, targets: newTargets};
       },
       () => {
-        targetNode.appendChild(renderNode);
+        renderNode != null && targetNode.appendChild(renderNode);
       }
     );
   };
 
   deleteItem = (id: ItemID) => {
-    // FIXME: This won't work well in practice because if an item
-    // gets unmounted, it will also remove it from the target.
     this.setState(({items, targets}) => {
       const newTargets = {...targets};
       delete newTargets[id];
 
-      const newItems = {...items};
-      delete newItems[id];
+      const item = items[id];
+      let newItems = items;
+      if (item.id === item.targetID) {
+        newItems = {...items};
+        delete newItems[id];
+      }
 
       return {
         targets: newTargets,
@@ -234,19 +241,24 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
   };
 
   renderItemToTarget = (itemID: ItemID, targetID: TargetID) => {
+    let cleanupNode = null;
     this.setState(
       ({targets, items}) => {
         const targetNode = targets[targetID];
-        if (targetNode == null) {
-          console.warn(`Wormhole.renderItemToTarget: Invalid targetID: ${targetID}`);
-          return {};
-        }
-
         let item = items[itemID];
         if (item == null) {
           console.warn(`Wormhole.renderItemToTarget: Invalid itemID: ${itemID}`);
           return {};
         }
+
+        // If no valid target - queue node destruction
+        if (targetNode == null) {
+          cleanupNode = item.renderNode;
+          const newItems = {...items};
+          delete newItems[itemID];
+          return {items: newItems};
+        }
+
         if (item.targetID === targetID) {
           console.warn(`Wormhole.renderItemToTarget: Already in targetID: ${targetID}`);
           return {};
@@ -262,14 +274,21 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
         };
       },
       () => {
-        const {items, targets} = this.state;
-        const targetNode = targets[targetID];
-        let item = items[itemID];
-        if (item == null || targetNode == null) {
-          console.warn(`Wormhole.renderItemToTarget: Somehow, someway, item or target nodes don't exist`);
-          return;
+        if (cleanupNode == null) {
+          const {items, targets} = this.state;
+          const targetNode = targets[targetID];
+          let item = items[itemID];
+          if (item == null || targetNode == null) {
+            console.warn(`Wormhole.renderItemToTarget: Somehow, someway, item or target nodes don't exist`);
+            return;
+          }
+          targetNode.appendChild(item.renderNode);
+        } else {
+          const {parentNode} = cleanupNode;
+          if (parentNode != null) {
+            parentNode.removeChild(cleanupNode);
+          }
         }
-        targetNode.appendChild(item.renderNode);
       }
     );
   };
@@ -284,7 +303,11 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
         {children}
         {Object.keys(items).map(key => {
           const {render, renderNode, targetID} = items[key];
-          return createPortal(render(targetID, targets, this.renderItemToTarget), renderNode);
+          return (
+            <React.Fragment key={key}>
+              {createPortal(render(targetID, targets, this.renderItemToTarget), renderNode)}
+            </React.Fragment>
+          );
         })}
       </Context.Provider>
     );
