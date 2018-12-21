@@ -1,0 +1,18 @@
+[ignore]
+.*/node_modules/.*
+
+[include]
+
+[libs]
+
+[options]
+module.system=node
+module.name_mapper='@discord/\(.+\)' -> '<PROJECT_ROOT>/../discord_common/js/packages/\1'
+module.name_mapper='@discord/common' -> '<PROJECT_ROOT>/../discord_common/js/shared'
+module.name_mapper='.*\.mod\.css' -> '<PROJECT_ROOT>/flow/stub/css-module-loader.js'
+module.name_mapper='.*\.\(svg\|png\|jpg\|gif\|css\|styl\|webp\)$' -> '<PROJECT_ROOT>/flow/stub/url-loader.js'
+suppress_comment= \\(.\\|\\n\\)*\\$FlowFixMe
+emoji=true
+esproposal.class_static_fields=enable
+esproposal.class_instance_fields=enable
+esproposal.export_star_as=enable

@@ -1,52 +1,25 @@
+// @flow
+
 import React from 'react';
+import Wormhole from './Wormhole';
 import Content from './components/Content';
-import PIP from './components/PIP';
-import NodeWrapper from './components/NodeWrapper';
-import Video from './components/Video';
-import Dispatcher from './Dispatcher';
-import connectStores from './lib/connectStores';
-import SharedDOMElementStore from './stores/SharedDOMElementStore';
-import {ActionTypes, PIP_ID} from './Constants';
+import Message from './components/Message';
+import {PIP_ID, VIDEO_URL} from './Constants';
+import styles from './App.module.css';
 
 function getId(src, context) {
   return `${context}-${src}`;
 }
 
-const Message = ({src, context}) => (
-  <div>
-    <NodeWrapper id={getId(src, context)} ownerId={context} renderPlaceholder={() => <div>Video is elsewhere</div>}>
-      {() => <Video src={src} width={200} />}
-    </NodeWrapper>
-    <button
-      type="button"
-      onClick={() => {
-        Dispatcher.dispatch({
-          type: ActionTypes.SHARED_NODE_TRANSFER_OWNERSHIP,
-          id: getId(src, context),
-          ownerId: PIP_ID,
-        });
-      }}>
-      Move to pip
-    </button>
-  </div>
-);
-
-const ConnectedPIP = connectStores(
-  [SharedDOMElementStore],
-  () => ({
-    node: SharedDOMElementStore.getOwnedNode(PIP_ID),
-  }),
-  PIP
-);
-
 export default () => (
-  <>
+  <Wormhole>
     <Content>
-      <Message
-        src="https://cdn.discordapp.com/attachments/267040578556919808/522213885948985380/video.mov"
-        context="messages"
-      />
+      <Wormhole.Item id={getId(VIDEO_URL, 'content')}>
+        {(_, renderItemToTarget) => (
+          <Message src={VIDEO_URL} onClick={() => renderItemToTarget(getId(VIDEO_URL, 'content'), PIP_ID)} />
+        )}
+      </Wormhole.Item>
     </Content>
-    <ConnectedPIP />
-  </>
+    <Wormhole.Target id={PIP_ID} className={styles.pip} />
+  </Wormhole>
 );
