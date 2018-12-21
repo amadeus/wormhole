@@ -39,6 +39,8 @@ type WormholeState = {|
   __deleteItem: ItemID => void,
 |};
 
+// NOTE: For now making this a singleton type component - since I am not sure
+// of an elegant way to make instantiated contexts
 let instance = false;
 
 const Context = React.createContext<WormholeState>({
@@ -178,12 +180,16 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
   };
 
   registerItem = (id: ItemID, render: RenderFunction, renderNode: ItemNode, targetNode: TargetNode) => {
-    this.setState(({items, targets}) => {
-      const newItems = {...items, [id]: {id, targetID: id, render, renderNode}};
-      const newTargets = {...targets, [id]: targetNode};
-      targetNode.appendChild(renderNode);
-      return {items: newItems, targets: newTargets};
-    });
+    this.setState(
+      ({items, targets}) => {
+        const newItems = {...items, [id]: {id, targetID: id, render, renderNode}};
+        const newTargets = {...targets, [id]: targetNode};
+        return {items: newItems, targets: newTargets};
+      },
+      () => {
+        targetNode.appendChild(renderNode);
+      }
+    );
   };
 
   deleteItem = (id: ItemID) => {
@@ -204,33 +210,44 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
   };
 
   renderItemToTarget = (itemID: ItemID, targetID: TargetID) => {
-    this.setState(({targets, items}) => {
-      const targetNode = targets[targetID];
-      if (targetNode == null) {
-        console.warn(`Wormhole.renderItemToTarget: Invalid targetID: ${targetID}`);
-        return {};
-      }
+    this.setState(
+      ({targets, items}) => {
+        const targetNode = targets[targetID];
+        if (targetNode == null) {
+          console.warn(`Wormhole.renderItemToTarget: Invalid targetID: ${targetID}`);
+          return {};
+        }
 
-      let item = items[itemID];
-      if (item == null) {
-        console.warn(`Wormhole.renderItemToTarget: Invalid itemID: ${itemID}`);
-        return {};
-      }
-      if (item.targetID === targetID) {
-        console.warn(`Wormhole.renderItemToTarget: Already in targetID: ${targetID}`);
-        return {};
-      }
-      targetNode.appendChild(item.renderNode);
-      return {
-        items: {
-          ...items,
-          [itemID]: {
-            ...item,
-            targetID: targetID,
+        let item = items[itemID];
+        if (item == null) {
+          console.warn(`Wormhole.renderItemToTarget: Invalid itemID: ${itemID}`);
+          return {};
+        }
+        if (item.targetID === targetID) {
+          console.warn(`Wormhole.renderItemToTarget: Already in targetID: ${targetID}`);
+          return {};
+        }
+        return {
+          items: {
+            ...items,
+            [itemID]: {
+              ...item,
+              targetID: targetID,
+            },
           },
-        },
-      };
-    });
+        };
+      },
+      () => {
+        const {items, targets} = this.state;
+        const targetNode = targets[targetID];
+        let item = items[itemID];
+        if (item == null || targetNode == null) {
+          console.warn(`Wormhole.renderItemToTarget: Somehow, someway, item or target nodes don't exist`);
+          return;
+        }
+        targetNode.appendChild(item.renderNode);
+      }
+    );
   };
 
   render() {
