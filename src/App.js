@@ -18,6 +18,15 @@ class App extends React.Component<void, AppState> {
     pages: [VIDEOS_1, VIDEOS_2],
   };
 
+  toggleVideos = () => {
+    const {page} = this.state;
+    if (page === 0) {
+      this.setState({page: 1});
+    } else {
+      this.setState({page: 0});
+    }
+  };
+
   render() {
     const {page, pages} = this.state;
     return (
@@ -55,6 +64,9 @@ class App extends React.Component<void, AppState> {
               }}
             </Wormhole.Item>
           ))}
+          <button onClick={this.toggleVideos} type="button" className={styles.button}>
+            Videos Page {page + 1}
+          </button>
         </Content>
         <Wormhole.Target id={PIP_ID} className={styles.pip} />
       </Wormhole>
