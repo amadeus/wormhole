@@ -1,0 +1,13 @@
+.container {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  min-width: 300px;
+  min-height: 150px;
+  background-color: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+}

@@ -1,24 +1,10 @@
-import React, {Component} from 'react';
-import Dispatcher from './Dispatcher';
-import {ActionTypes} from './Constants';
-import CounterStore from './stores/CounterStore';
-import Counter from './components/Counter';
-import connectStores from './lib/connectStore';
+import React from 'react';
+import Content from './components/Content';
+import PIP from './components/PIP';
 
-const ConnectedCounter = connectStores([CounterStore], () => ({count: CounterStore.count}), Counter);
-
-class App extends Component {
-  componentDidMount() {
-    setInterval(() => Dispatcher.dispatch({type: ActionTypes.INCREMENT_COUNTER}), 1000);
-  }
-
-  render() {
-    return (
-      <div style={{padding: 20, textAlign: 'center'}}>
-        <ConnectedCounter />
-      </div>
-    );
-  }
-}
-
-export default App;
+export default () => (
+  <>
+    <Content>we out hererr!</Content>
+    <PIP />
+  </>
+);
