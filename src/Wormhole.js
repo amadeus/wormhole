@@ -15,7 +15,11 @@ type WormholeProps = {|
 
 type RenderToTarget = (ItemID, TargetID) => void;
 
-type RenderFunction = (currentTarget: TargetID, targets: TargetID[], renderItemToTarget: RenderToTarget) => React.Node;
+type RenderFunction = (
+  currentTarget: TargetID,
+  targets: {[TargetID]: TargetNode},
+  renderItemToTarget: RenderToTarget
+) => React.Node;
 
 type ToRenderProps = {|
   id: ItemID,
@@ -25,11 +29,10 @@ type ToRenderProps = {|
 |};
 
 type WormholeState = {|
-  targets: TargetID[],
-  targetNodes: {[TargetID]: TargetNode},
+  items: {[ItemID]: ToRenderProps},
+  targets: {[TargetID]: TargetNode},
   renderItemToTarget: (ItemID, TargetID) => void,
 
-  __toRender: Array<ToRenderProps>,
   __registerTarget: (TargetID, TargetNode) => void,
   __deleteTarget: TargetID => void,
   __registerItem: (ItemID, RenderFunction, ItemNode, TargetNode) => void,
@@ -39,10 +42,9 @@ type WormholeState = {|
 let instance = false;
 
 const Context = React.createContext<WormholeState>({
-  targets: [],
-  targetNodes: {},
+  items: {},
+  targets: {},
   renderItemToTarget: () => {},
-  __toRender: [],
   __registerTarget: () => {},
   __deleteTarget: () => {},
   __registerItem: () => {},
@@ -149,10 +151,9 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
     }
     instance = true;
     this.state = {
-      targets: [],
-      targetNodes: {},
+      items: {},
+      targets: {},
       renderItemToTarget: this.renderItemToTarget,
-      __toRender: [],
       __registerTarget: this.registerTarget,
       __deleteTarget: this.deleteTarget,
       __registerItem: this.registerItem,
@@ -165,77 +166,52 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
   }
 
   registerTarget = (id: TargetID, node: TargetNode) => {
-    this.setState(({targets, targetNodes}) => ({
-      targets: [...targets, id],
-      targetNodes: {
-        ...targetNodes,
-        [id]: node,
-      },
-    }));
+    this.setState(({targets}) => ({targets: {...targets, [id]: node}}));
   };
 
   deleteTarget = (id: TargetID) => {
-    this.setState(({targets, targetNodes}) => {
-      const newTargetNodes = {...targetNodes};
-      delete newTargetNodes[id];
-      const newTargets = [...targets];
-      newTargets.splice(newTargets.indexOf(id), 1);
-      return {
-        targetNodes: newTargetNodes,
-        targets: targets,
-      };
+    this.setState(({targets}) => {
+      const newTargets = {...targets};
+      delete newTargets[id];
+      return {targets: newTargets};
     });
   };
 
   registerItem = (id: ItemID, render: RenderFunction, renderNode: ItemNode, targetNode: TargetNode) => {
-    this.setState(({__toRender, targetNodes, targets}) => {
-      const newToRender = [...__toRender, {id, targetID: id, render, renderNode}];
-      const newTargetNodes = {...targetNodes, [id]: targetNode};
-      const newTargets = [...targets, id];
+    this.setState(({items, targets}) => {
+      const newItems = {...items, [id]: {id, targetID: id, render, renderNode}};
+      const newTargets = {...targets, [id]: targetNode};
       targetNode.appendChild(renderNode);
-      return {
-        targets: newTargets,
-        targetNodes: newTargetNodes,
-        __toRender: newToRender,
-      };
+      return {items: newItems, targets: newTargets};
     });
   };
 
   deleteItem = (id: ItemID) => {
-    this.setState(({__toRender, targetNodes}) => {
-      const newTargetNodes = {...targetNodes};
-      delete newTargetNodes[id];
+    // FIXME: This won't work well in practice because if an item
+    // gets unmounted, it will also remove it from the target.
+    this.setState(({items, targets}) => {
+      const newTargets = {...targets};
+      delete newTargets[id];
 
-      let index = -1;
-      let toRender = null;
-      __toRender.find(({id: _id}, i) => {
-        if (id === _id) {
-          index = i;
-          return true;
-        }
-        return false;
-      });
-      if (index > -1) {
-        toRender = [...__toRender];
-        toRender.splice(index, 1);
-      }
+      const newItems = {...items};
+      delete newItems[id];
 
       return {
-        targetNodes: newTargetNodes,
-        __toRender: toRender || __toRender,
+        targets: newTargets,
+        items: newItems,
       };
     });
   };
 
   renderItemToTarget = (itemID: ItemID, targetID: TargetID) => {
-    this.setState(({targetNodes, __toRender}) => {
-      const targetNode = targetNodes[targetID];
+    this.setState(({targets, items}) => {
+      const targetNode = targets[targetID];
       if (targetNode == null) {
         console.warn(`Wormhole.renderItemToTarget: Invalid targetID: ${targetID}`);
         return {};
       }
 
-      let item = __toRender.find(({id}) => id === itemID);
+      let item = items[itemID];
       if (item == null) {
         console.warn(`Wormhole.renderItemToTarget: Invalid itemID: ${itemID}`);
         return {};
@@ -244,16 +220,15 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
         console.warn(`Wormhole.renderItemToTarget: Already in targetID: ${targetID}`);
         return {};
       }
-      let toRenderSet: Set<ToRenderProps> = new Set(__toRender);
-      toRenderSet.delete(item);
-      item = {
-        ...item,
-        targetID: targetID,
-      };
-      toRenderSet.add(item);
       targetNode.appendChild(item.renderNode);
       return {
-        __toRender: Array.from(toRenderSet),
+        items: {
+          ...items,
+          [itemID]: {
+            ...item,
+            targetID: targetID,
+          },
+        },
       };
     });
   };
@@ -261,14 +236,15 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
   render() {
     const {
       props: {children},
-      state: {__toRender, targets},
+      state: {items, targets},
     } = this;
     return (
       <Context.Provider value={this.state}>
         {children}
-        {__toRender.map(({render, renderNode, targetID}) =>
-          createPortal(render(targetID, targets, this.renderItemToTarget), renderNode)
-        )}
+        {Object.keys(items).map(key => {
+          const {render, renderNode, targetID} = items[key];
+          return createPortal(render(targetID, targets, this.renderItemToTarget), renderNode);
+        })}
       </Context.Provider>
     );
   }
