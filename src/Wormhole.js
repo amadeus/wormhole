@@ -56,6 +56,8 @@ const Context = React.createContext<WormholeState>({
 type ItemCoreProps = {|
   id: ItemID,
   className?: ?string,
+  renderNodeClassName?: ?string,
+  renderPlaceholder?: ?RenderFunction,
   __context: WormholeState,
   children: RenderFunction,
 |};
@@ -65,11 +67,13 @@ class ItemCore extends React.Component<ItemCoreProps> {
 
   componentDidMount() {
     const {
-      props: {__context, id, children},
+      props: {__context, id, children, renderNodeClassName},
       ref: {current},
     } = this;
     if (current != null) {
-      __context.__registerItem(id, children, document.createElement('div'), current);
+      const renderNode = document.createElement('div');
+      renderNode.className = renderNodeClassName || '';
+      __context.__registerItem(id, children, renderNode, current);
     }
   }
 
@@ -78,21 +82,41 @@ class ItemCore extends React.Component<ItemCoreProps> {
     __context.__deleteTarget(id);
   }
 
+  renderPlaceholder() {
+    const {__context, id, renderPlaceholder} = this.props;
+    const item = __context.items[id];
+    if (item == null || item.targetID === id || renderPlaceholder == null) {
+      return null;
+    }
+    return renderPlaceholder(item.targetID, __context.targets, __context.renderItemToTarget);
+  }
+
   render() {
-    return <div ref={this.ref} className={this.props.className} />;
+    return (
+      <div ref={this.ref} className={this.props.className}>
+        {this.renderPlaceholder()}
+      </div>
+    );
   }
 }
 
 type ItemProps = {|
   id: ItemID,
   className?: ?string,
+  renderNodeClassName?: ?string,
+  renderPlaceholder?: ?RenderFunction,
   children: RenderFunction,
 |};
 
-export const Item = ({children, id, className}: ItemProps) => (
+export const Item = ({children, id, className, renderNodeClassName, renderPlaceholder}: ItemProps) => (
   <Context.Consumer>
     {context => (
-      <ItemCore __context={context} id={id} className={className}>
+      <ItemCore
+        __context={context}
+        id={id}
+        className={className}
+        renderNodeClassName={renderNodeClassName}
+        renderPlaceholder={renderPlaceholder}>
         {children}
       </ItemCore>
     )}

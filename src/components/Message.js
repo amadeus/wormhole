@@ -2,18 +2,19 @@
 
 import React from 'react';
 import Video from './Video';
+import styles from './Message.module.css';
 
 type MessageProps = {|
   src: string,
+  width: number,
+  height: number,
   onClick: () => void,
 |};
 
-export default ({src, onClick}: MessageProps) => (
-  <div>
-    <div>
-      <Video src={src} width={200} />
-    </div>
-    <button type="button" onClick={onClick}>
+export default ({src, onClick, width, height}: MessageProps) => (
+  <div className={styles.container}>
+    <Video src={src} width={width} height={height} />
+    <button type="button" onClick={onClick} className={styles.button}>
       Toggle Element
     </button>
   </div>

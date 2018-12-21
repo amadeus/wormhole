@@ -14,10 +14,24 @@ function getId(src, context) {
 export default () => (
   <Wormhole>
     <Content>
-      <Wormhole.Item id={getId(VIDEO_URL, 'content')}>
+      <Wormhole.Item
+        id={getId(VIDEO_URL, 'content')}
+        renderPlaceholder={(_, __, renderItemToTarget) => (
+          <div
+            onClick={() => {
+              const id = getId(VIDEO_URL, 'content');
+              renderItemToTarget(id, id);
+            }}
+            className={styles.placeholder}
+            style={{width: 200, height: 355}}>
+            Return video
+          </div>
+        )}>
         {(target, targets, renderItemToTarget) => {
           return (
             <Message
+              width={200}
+              height={355}
               src={VIDEO_URL}
               onClick={() => {
                 const id = getId(VIDEO_URL, 'content');
