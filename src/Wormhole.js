@@ -89,7 +89,7 @@ type ItemProps = {|
   children: RenderFunction,
 |};
 
-const Item = ({children, id, className}: ItemProps) => (
+export const Item = ({children, id, className}: ItemProps) => (
   <Context.Consumer>
     {context => (
       <ItemCore __context={context} id={id} className={className}>
@@ -137,7 +137,7 @@ type TargetProps = {|
   className?: ?string,
 |};
 
-const Target = ({id, className}: TargetProps) => (
+export const Target = ({id, className}: TargetProps) => (
   <Context.Consumer>{context => <TargetCore __context={context} id={id} className={className} />}</Context.Consumer>
 );
 
