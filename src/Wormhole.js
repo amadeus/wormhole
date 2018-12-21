@@ -13,25 +13,34 @@ type WormholeProps = {|
   children: React.Node,
 |};
 
-type RenderFunction = (targets: {[TargetID]: TargetNode}, renderItemToTarget: (ItemID, TargetID) => void) => React.Node;
+type RenderToTarget = (ItemID, TargetID) => void;
+
+type RenderFunction = (currentTarget: TargetID, targets: TargetID[], renderItemToTarget: RenderToTarget) => React.Node;
+
+type ToRenderProps = {|
+  id: ItemID,
+  targetID: TargetID,
+  render: RenderFunction,
+  renderNode: ItemNode,
+|};
 
 type WormholeState = {|
-  items: {[ItemID]: [() => RenderFunction, ItemNode]},
-  targets: {[TargetID]: TargetNode},
+  targets: TargetID[],
+  targetNodes: {[TargetID]: TargetNode},
   renderItemToTarget: (ItemID, TargetID) => void,
 
-  __toRender: Array<[RenderFunction, TargetNode | ItemNode, ItemID]>,
+  __toRender: Array<ToRenderProps>,
   __registerTarget: (TargetID, TargetNode) => void,
   __deleteTarget: TargetID => void,
-  __registerItem: (ItemID, RenderFunction, ItemNode) => void,
+  __registerItem: (ItemID, RenderFunction, ItemNode, TargetNode) => void,
   __deleteItem: ItemID => void,
 |};
 
 let instance = false;
 
 const Context = React.createContext<WormholeState>({
-  items: {},
-  targets: {},
+  targets: [],
+  targetNodes: {},
   renderItemToTarget: () => {},
   __toRender: [],
   __registerTarget: () => {},
@@ -42,6 +51,7 @@ const Context = React.createContext<WormholeState>({
 
 type ItemCoreProps = {|
   id: ItemID,
+  className?: ?string,
   __context: WormholeState,
   children: RenderFunction,
 |};
@@ -55,7 +65,7 @@ class ItemCore extends React.Component<ItemCoreProps> {
       ref: {current},
     } = this;
     if (current != null) {
-      __context.__registerItem(id, children, current);
+      __context.__registerItem(id, children, document.createElement('div'), current);
     }
   }
 
@@ -65,19 +75,20 @@ class ItemCore extends React.Component<ItemCoreProps> {
   }
 
   render() {
-    return <div ref={this.ref} />;
+    return <div ref={this.ref} className={this.props.className} />;
   }
 }
 
 type ItemProps = {|
   id: ItemID,
+  className?: ?string,
   children: RenderFunction,
 |};
 
-const Item = ({children, id}: ItemProps) => (
+const Item = ({children, id, className}: ItemProps) => (
   <Context.Consumer>
     {context => (
-      <ItemCore __context={context} id={id}>
+      <ItemCore __context={context} id={id} className={className}>
         {children}
       </ItemCore>
     )}
@@ -138,8 +149,8 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
     }
     instance = true;
     this.state = {
-      items: {},
-      targets: {},
+      targets: [],
+      targetNodes: {},
       renderItemToTarget: this.renderItemToTarget,
       __toRender: [],
       __registerTarget: this.registerTarget,
@@ -154,38 +165,51 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
   }
 
   registerTarget = (id: TargetID, node: TargetNode) => {
-    this.setState(({targets}) => ({
-      targets: {
-        ...targets,
+    this.setState(({targets, targetNodes}) => ({
+      targets: [...targets, id],
+      targetNodes: {
+        ...targetNodes,
         [id]: node,
       },
     }));
   };
 
   deleteTarget = (id: TargetID) => {
-    this.setState({});
+    this.setState(({targets, targetNodes}) => {
+      const newTargetNodes = {...targetNodes};
+      delete newTargetNodes[id];
+      const newTargets = [...targets];
+      newTargets.splice(newTargets.indexOf(id), 1);
+      return {
+        targetNodes: newTargetNodes,
+        targets: targets,
+      };
+    });
   };
 
-  registerItem = (id: ItemID, renderFunction: RenderFunction, node: ItemNode) => {
-    this.setState(({items, __toRender}) => {
-      const newItems = {...items, [id]: [renderFunction, node]};
-      const newToRender = [...__toRender, [renderFunction, node, id]];
+  registerItem = (id: ItemID, render: RenderFunction, renderNode: ItemNode, targetNode: TargetNode) => {
+    this.setState(({__toRender, targetNodes, targets}) => {
+      const newToRender = [...__toRender, {id, targetID: id, render, renderNode}];
+      const newTargetNodes = {...targetNodes, [id]: targetNode};
+      const newTargets = [...targets, id];
+      targetNode.appendChild(renderNode);
       return {
-        items: newItems,
+        targets: newTargets,
+        targetNodes: newTargetNodes,
         __toRender: newToRender,
       };
     });
   };
 
   deleteItem = (id: ItemID) => {
-    this.setState(({items, __toRender}) => {
-      const newItems = {...items};
-      delete newItems[id];
+    this.setState(({__toRender, targetNodes}) => {
+      const newTargetNodes = {...targetNodes};
+      delete newTargetNodes[id];
 
       let index = -1;
       let toRender = null;
-      __toRender.find((item, i) => {
-        if (item[2] === id && item[1] === items[id][1]) {
+      __toRender.find(({id: _id}, i) => {
+        if (id === _id) {
           index = i;
           return true;
         }
@@ -197,38 +221,40 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
       }
 
       return {
-        items: newItems,
+        targetNodes: newTargetNodes,
         __toRender: toRender || __toRender,
       };
     });
   };
 
   renderItemToTarget = (itemID: ItemID, targetID: TargetID) => {
-    this.setState(({__toRender, targets, items}) => {
-      const targetNode = targets[targetID];
-      if (items[itemID] == null) {
-        console.warn(`Wormhole.renderItemToTarget: Invalud itemID ${itemID}`);
-        return {};
-      }
+    this.setState(({targetNodes, __toRender}) => {
+      const targetNode = targetNodes[targetID];
       if (targetNode == null) {
-        console.warn(`Wormhole.renderItemToTarget: Invalud targetID ${targetID}`);
+        console.warn(`Wormhole.renderItemToTarget: Invalid targetID: ${targetID}`);
         return {};
       }
 
-      let toRender = null;
-      let newItem;
-      __toRender.find((item, index) => {
-        if (item[2] === itemID) {
-          newItem = [...item];
-          newItem[1] = targetNode;
-          toRender = [...__toRender];
-          toRender.splice(index, 1, newItem);
-          return true;
-        }
-        return false;
-      });
-
-      return {__toRender: toRender || __toRender};
+      let item = __toRender.find(({id}) => id === itemID);
+      if (item == null) {
+        console.warn(`Wormhole.renderItemToTarget: Invalid itemID: ${itemID}`);
+        return {};
+      }
+      if (item.targetID === targetID) {
+        console.warn(`Wormhole.renderItemToTarget: Already in targetID: ${targetID}`);
+        return {};
+      }
+      let toRenderSet: Set<ToRenderProps> = new Set(__toRender);
+      toRenderSet.delete(item);
+      item = {
+        ...item,
+        targetID: targetID,
+      };
+      toRenderSet.add(item);
+      targetNode.appendChild(item.renderNode);
+      return {
+        __toRender: Array.from(toRenderSet),
+      };
     });
   };
 
@@ -240,7 +266,9 @@ class Wormhole extends React.PureComponent<WormholeProps, WormholeState> {
     return (
       <Context.Provider value={this.state}>
         {children}
-        {__toRender.map(([render, node]) => createPortal(render(targets, this.renderItemToTarget), node))}
+        {__toRender.map(({render, renderNode, targetID}) =>
+          createPortal(render(targetID, targets, this.renderItemToTarget), renderNode)
+        )}
       </Context.Provider>
     );
   }

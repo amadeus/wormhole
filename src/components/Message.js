@@ -14,7 +14,7 @@ export default ({src, onClick}: MessageProps) => (
       <Video src={src} width={200} />
     </div>
     <button type="button" onClick={onClick}>
-      Move to pip
+      Toggle Element
     </button>
   </div>
 );
