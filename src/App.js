@@ -69,7 +69,6 @@ class App extends React.Component<void, AppState> {
           </button>
         </Content>
         <Wormhole.Target id={PIP_ID} className={styles.pip} />
-        <div>Testing</div>
       </Wormhole>
     );
   }
