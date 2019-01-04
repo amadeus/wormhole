@@ -42,3 +42,20 @@
 .button:active {
   background-color: rgba(0, 0, 0, 0.9);
 }
+
+.iframeContainer {
+  position: relative;
+  overflow: hidden;
+  border-radius: 5px;
+  margin: 0 10px;
+}
+
+.iframeContainer iframe {
+  display: block;
+  border-radius: 5px;
+}
+
+.iframeContainer .button {
+  top: 10px;
+  left: 10px;
+}
