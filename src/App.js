@@ -72,7 +72,7 @@ class App extends React.Component<void, AppState> {
                   renderItemToTarget('garretg', 'garretg');
                 }}
                 className={styles.placeholder}
-                style={{width: 600, height: 355}}>
+                style={{width: 640, height: 360, marginTop: 20}}>
                 Return video
               </div>
             )}>
@@ -85,8 +85,8 @@ class App extends React.Component<void, AppState> {
                     frameborder="0"
                     allowfullscreen="true"
                     scrolling="no"
-                    height="355"
-                    width="600"
+                    height="360"
+                    width="640"
                   />
                   <button
                     type="button"

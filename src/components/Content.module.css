@@ -5,6 +5,8 @@
   padding: 20px 10px;
   min-height: 0;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   display: flex;
   justify-content: center;
+  max-width: 680px;
 }
