@@ -3,7 +3,7 @@
 import React from 'react';
 import Wormhole from './Wormhole';
 import Content from './components/Content';
-import Message from './components/Message';
+import VideoItem from './components/VideoItem';
 import {PIP_ID, VIDEOS_1, VIDEOS_2} from './Constants';
 import styles from './App.module.css';
 
@@ -48,7 +48,7 @@ class App extends React.Component<void, AppState> {
               )}>
               {(target, targets, renderItemToTarget) => {
                 return (
-                  <Message
+                  <VideoItem
                     width={200}
                     height={355}
                     src={src}
@@ -64,48 +64,8 @@ class App extends React.Component<void, AppState> {
               }}
             </Wormhole.Item>
           ))}
-          <Wormhole.Item
-            id="garretg"
-            renderPlaceholder={(_, __, renderItemToTarget) => (
-              <div
-                onClick={() => {
-                  renderItemToTarget('garretg', 'garretg');
-                }}
-                className={styles.placeholder}
-                style={{width: 640, height: 360, marginTop: 20}}>
-                Return video
-              </div>
-            )}>
-            {(target, targets, renderItemToTarget) => {
-              return (
-                <div className={styles.iframeContainer}>
-                  <iframe
-                    title="garretg"
-                    src="https://player.twitch.tv/?channel=garrettg"
-                    frameborder="0"
-                    allowfullscreen="true"
-                    scrolling="no"
-                    height="360"
-                    width="640"
-                  />
-                  <button
-                    type="button"
-                    className={styles.button}
-                    onClick={() => {
-                      if (target === PIP_ID) {
-                        renderItemToTarget('garretg', 'garretg');
-                      } else {
-                        renderItemToTarget('garretg', PIP_ID);
-                      }
-                    }}>
-                    Toggle Element
-                  </button>
-                </div>
-              );
-            }}
-          </Wormhole.Item>
           <button onClick={this.toggleVideos} type="button" className={styles.button}>
-            Videos Page {page + 1}
+            Goto Videos Page {page === 0 ? 2 : 1}
           </button>
         </Content>
         <Wormhole.Target id={PIP_ID} className={styles.pip} />
